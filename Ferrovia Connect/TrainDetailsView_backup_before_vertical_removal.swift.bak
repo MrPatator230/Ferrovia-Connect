@@ -1,0 +1,391 @@
+//
+//  TrainDetailsView.swift
+//  Ferrovia Connect
+//
+//  Vue pour afficher les détails complets d'un train (reproduit le design de l'image)
+//
+
+import SwiftUI
+
+struct TrainDetailsView: View {
+    @Environment(\.dismiss) var dismiss
+    @StateObject private var trainService = TrainDetailsService.shared
+    
+    let trainNumber: String
+    @State private var trainDetails: TrainDetails?
+    @State private var isLoading = true
+    @State private var errorMessage: String?
+    var previewMode: Bool = false
+    
+    // Unified design colors to match the mock
+    private let bgColor = Color(red: 0.08, green: 0.10, blue: 0.15)
+    private let textPrimary = Color.white
+    private let textSecondary = Color.white.opacity(0.6)
+    private let linePurple = Color(red: 0.58, green: 0.48, blue: 0.75)
+    private let timeText = Color(red: 0.92, green: 0.90, blue:0.98)
+
+    // Shared layout metrics used by the timeline background and rows
+    private let lineWidth: CGFloat = 14
+    private let nodeSize: CGFloat = 44
+    private let connectorWidth: CGFloat = 46
+    private let connectorHeight: CGFloat = 6
+    
+    var body: some View {
+        ZStack(alignment: .top) {
+            bgColor.ignoresSafeArea()
+            
+            VStack(spacing: 0) {
+                // Custom Header
+                ZStack {
+                    Color(red: 0.10, green: 0.12, blue: 0.17)
+                    
+                    HStack {
+                        Button(action: { dismiss() }) {
+                            Circle()
+                                .fill(Color.white)
+                                .frame(width: 50, height: 50)
+                                .overlay(
+                                    Image(systemName: "chevron.left")
+                                        .font(.system(size: 18, weight: .semibold))
+                                        .foregroundColor(Color(red: 0.10, green: 0.12, blue: 0.17))
+                                )
+                        }
+                        
+                        Spacer()
+                        
+                        Text("Train \(trainDetails?.trainType ?? "MOBIGO") \(trainNumber)")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(.white)
+                        
+                        Spacer()
+                        
+                        // Invisible spacer for centering
+                        Color.clear.frame(width: 50, height: 50)
+                    }
+                    .padding(.horizontal, 20)
+                }
+                .frame(height: 100)
+                
+                // Main scrollable content
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 16) {
+                        // Train card section
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Train court")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.white)
+                                .padding(.leading, 4)
+                            
+                            ZStack(alignment: .trailing) {
+                                RoundedRectangle(cornerRadius: 16)
+                                    .fill(Color(red: 0.10, green: 0.12, blue: 0.17))
+                                    .frame(height: 140)
+                                
+                                // Train image placeholder
+                                Image(systemName: "tram.fill")
+                                    .resizable()
+                                    .scaledToFit()
+                                    .frame(height: 80)
+                                    .foregroundColor(Color.white.opacity(0.3))
+                                    .padding(.leading, 60)
+                                
+                                // Chevron button
+                                Circle()
+                                    .fill(Color(red: 0.30, green: 0.50, blue: 0.80))
+                                    .frame(width: 40, height: 40)
+                                    .overlay(
+                                        Image(systemName: "chevron.right")
+                                            .font(.system(size: 14, weight: .semibold))
+                                            .foregroundColor(.white)
+                                    )
+                                    .padding(.trailing, 16)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                        
+                        // Platform badge
+                        HStack(spacing: 12) {
+                            ZStack {
+                                Circle()
+                                    .fill(Color(red: 0.40, green: 0.60, blue: 0.85))
+                                    .frame(width: 32, height: 32)
+                                Image(systemName: "info")
+                                    .font(.system(size: 14, weight: .bold))
+                                    .foregroundColor(.white)
+                            }
+                            
+                            Text("Voie \(trainDetails?.departurePlatform ?? "—")")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.white)
+                            
+                            Spacer()
+                        }
+                        .padding(.vertical, 16)
+                        .padding(.horizontal, 20)
+                        .background(
+                            RoundedRectangle(cornerRadius: 16)
+                                .stroke(Color(red: 0.40, green: 0.60, blue: 0.85), lineWidth: 2)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(Color(red: 0.10, green: 0.12, blue: 0.17))
+                                )
+                        )
+                        .padding(.horizontal, 20)
+                        
+                        // Services section
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Services à bord de ce train")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(.white)
+                            
+                            HStack(spacing: 32) {
+                                Image(systemName: "wind")
+                                    .font(.system(size: 26))
+                                    .foregroundColor(.white)
+                                
+                                Image(systemName: "bolt.fill")
+                                    .font(.system(size: 26))
+                                    .foregroundColor(.white)
+                                
+                                Image(systemName: "bicycle")
+                                    .font(.system(size: 26))
+                                    .foregroundColor(.white)
+                            }
+                        }
+                        .padding(.horizontal, 20)
+                        
+                        // Train composition info
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("1 train « \(trainDetails?.rollingStock ?? "Regiolis") » - 4 voitures - 220 places")
+                                .font(.system(size: 13))
+                                .foregroundColor(Color.white.opacity(0.6))
+                            
+                            RoundedRectangle(cornerRadius: 4)
+                                .fill(Color.black)
+                                .frame(height: 8)
+                        }
+                        .padding(.horizontal, 20)
+                        
+                        // Destination header
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Destination \(trainDetails?.arrivalStation ?? "—")")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundColor(textPrimary)
+                            Text("Opéré par SNCF Voyageurs — 1187")
+                                .font(.system(size: 14))
+                                .foregroundColor(textSecondary)
+                        }
+                        .padding(.horizontal, 20)
+                        .padding(.top, 8)
+                        
+                        // Timeline
+                        if let stops = trainDetails?.stops {
+                            // Draw a single continuous vertical pill behind the whole list, then lay rows on top
+                            ZStack(alignment: .topLeading) {
+                                GeometryReader { geo in
+                                    // full-height vertical pill positioned where nodes sit
+                                    RoundedRectangle(cornerRadius: lineWidth / 2)
+                                        .fill(linePurple)
+                                        .frame(width: lineWidth, height: max(geo.size.height, 1))
+                                        .position(x: 70 + connectorWidth + nodeSize / 2 + 0, y: geo.size.height / 2)
+                                }
+                                
+                                VStack(spacing: 0) {
+                                    ForEach(Array(stops.enumerated()), id: \.element.id) { index, stop in
+                                        TimelineRow(
+                                            stop: stop,
+                                            isFirst: index == 0,
+                                            isLast: index == stops.count - 1,
+                                            linePurple: linePurple,
+                                            bgColor: bgColor,
+                                            timeText: timeText
+                                        )
+                                    }
+                                }
+                            }
+                            .frame(minHeight: CGFloat(stops.count) * 92) // ensure background line has room
+                            .padding(.horizontal, 20)
+                        }
+                    }
+                    .padding(.bottom, 40)
+                }
+            }
+        }
+        .navigationBarHidden(true)
+        .task { await loadTrainDetails() }
+    }
+    
+    private func loadTrainDetails() async {
+        if previewMode {
+            isLoading = false
+            trainDetails = TrainDetails(
+                id: 1,
+                trainNumber: trainNumber,
+                trainType: "MOBIGO",
+                rollingStock: "Regiolis",
+                departureTime: "14:16",
+                arrivalTime: "14:30",
+                departureStation: "Besançon - Franche-Comté TGV",
+                arrivalStation: "Besançon-Viotte",
+                departurePlatform: "8",
+                arrivalPlatform: "2",
+                daysMask: 127,
+                stopsJson: nil,
+                stops: [
+                    TrainStop(stopOrder: 1, stationName: "Besançon - Franche-Comté TGV", stationId: 1, arrivalTime: nil, departureTime: "14:16", dwellMinutes: nil, platform: "8"),
+                    TrainStop(stopOrder: 2, stationName: "Ecole-Valentin", stationId: 2, arrivalTime: "14:22", departureTime: "14:22", dwellMinutes: 1, platform: nil),
+                    TrainStop(stopOrder: 3, stationName: "Besançon-Viotte", stationId: 3, arrivalTime: "14:30", departureTime: nil, dwellMinutes: nil, platform: "2")
+                ],
+                variantType: nil,
+                delayMinutes: nil,
+                delayCause: nil
+            )
+            return
+        }
+        
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            trainDetails = try await trainService.getTrainDetails(trainNumber: trainNumber)
+            isLoading = false
+        } catch TrainDetailsError.trainNotFound {
+            errorMessage = "Train \(trainNumber) non trouvé"
+            isLoading = false
+        } catch {
+            errorMessage = error.localizedDescription
+            isLoading = false
+        }
+    }
+}
+
+// Timeline row component with continuous rounded vertical line and horizontal connector
+struct TimelineRow: View {
+    let stop: TrainStop
+    let isFirst: Bool
+    let isLast: Bool
+    
+    // Themed inputs from parent for perfect color match
+    var linePurple: Color
+    var bgColor: Color
+    var timeText: Color
+    
+    private let lineWidth: CGFloat = 14
+    private let nodeSize: CGFloat = 44
+    private let connectorWidth: CGFloat = 46
+    private let connectorHeight: CGFloat = 6
+    
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            // 1. Time Capsule
+            if let time = stop.departureTime ?? stop.arrivalTime {
+                Text(time)
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundColor(timeText)
+                    .padding(.vertical, 8)
+                    .padding(.horizontal, 12)
+                    .background(Capsule().fill(linePurple))
+                    .frame(width: 70, alignment: .leading)
+            } else {
+                Spacer().frame(width: 70)
+            }
+
+            // 2. Horizontal connector (small pill) that links to the vertical line
+            RoundedRectangle(cornerRadius: connectorHeight / 2)
+                .fill(linePurple)
+                .frame(width: connectorWidth, height: connectorHeight)
+                .padding(.top, nodeSize / 2 - connectorHeight / 2)
+                .offset(x: nodeSize / 2) // overlap so the connector reaches the center of the vertical pill
+
+            // 3. Vertical timeline with node (vertical pill behind nodes)
+            ZStack(alignment: .top) {
+                VStack(spacing: 0) {
+                    // Top segment - visible when not first
+                    if !isFirst {
+                        RoundedRectangle(cornerRadius: lineWidth / 2)
+                            .fill(linePurple)
+                            .frame(width: lineWidth, height: nodeSize / 2)
+                    } else {
+                        // keep spacing when first to align node
+                        Spacer().frame(height: nodeSize / 2)
+                    }
+
+                    // Middle vertical segment (under the node)
+                    RoundedRectangle(cornerRadius: lineWidth / 2)
+                        .fill(linePurple)
+                        .frame(width: lineWidth, height: nodeSize)
+
+                    // Bottom segment - always extend to make the vertical bar continuous
+                    RoundedRectangle(cornerRadius: lineWidth / 2)
+                        .fill(linePurple)
+                        .frame(width: lineWidth)
+                        .frame(minHeight: 56)
+                }
+
+                // Node centered where horizontal connector meets the vertical line
+                nodeView
+                    .frame(width: nodeSize, height: nodeSize)
+                    .offset(x: 0, y: 0)
+            }
+            .frame(width: nodeSize)
+            .padding(.top, 8)
+
+            // 4. Station Info
+            VStack(alignment: .leading, spacing: 4) {
+                Text(stop.stationName)
+                    .font(.system(size: 18, weight: .semibold))
+                    .foregroundColor(.white)
+
+                if isFirst, let platform = stop.platform {
+                    Text("Voie \(platform)")
+                        .font(.system(size: 14))
+                        .foregroundColor(linePurple.opacity(0.8))
+                }
+
+                if !isFirst && !isLast, let dwell = stop.dwellMinutes, dwell > 0 {
+                    Text("\(dwell) min d'arrêt")
+                        .font(.system(size: 14))
+                        .foregroundColor(.white.opacity(0.6))
+                }
+            }
+            .padding(.leading, 12)
+            .padding(.top, 10)
+
+            Spacer()
+        }
+        .padding(.vertical, isLast ? 6 : 10)
+    }
+
+    @ViewBuilder
+    private var nodeView: some View {
+        if isFirst {
+            // Start node: Train icon with white circle
+            ZStack {
+                Circle().fill(Color.white)
+                Image(systemName: "tram.fill")
+                    .font(.system(size: 18, weight: .bold))
+                    .foregroundColor(bgColor)
+            }
+        } else if isLast {
+            // End node: Hollow circle with white stroke and inner dark fill
+            ZStack {
+                Circle()
+                    .fill(bgColor)
+                    .frame(width: 22, height: 22)
+                Circle()
+                    .stroke(Color.white, lineWidth: 4)
+                    .frame(width: 22, height: 22)
+            }
+        } else {
+            // Middle node: Solid black dot
+            Circle()
+                .fill(Color.black)
+                .frame(width: 12, height: 12)
+        }
+    }
+}
+
+#Preview {
+    TrainDetailsView(trainNumber: "894229", previewMode: true)
+}

@@ -210,7 +210,7 @@ struct TrainDetailsView: View {
                             VStack(spacing: 0) {
                                 ForEach(Array(stops.enumerated()), id: \ .element.id) { index, stop in
                                     let currentHeight: CGFloat = index == 0 ? 80 : (index == stops.count - 1 ? 60 : 70)
-                                    let nextHeight: CGFloat = index < stops.count - 1 ? 
+                                    let nextHeight: CGFloat = index < stops.count - 1 ?
                                         (index + 1 == stops.count - 1 ? 60 : 70) : 0
                                     let lineHeight = currentHeight / 2 + nextHeight / 2
                                     
@@ -327,16 +327,20 @@ struct TrainDetailsView: View {
 
     private func descriptionText(from details: TrainDetails) -> String {
         var parts: [String] = []
-        if let rolling = details.rollingStock {
+        
+        // Utiliser le nom du matériel roulant si disponible
+        if let rollingStockInfo = details.rollingStockInfo {
+            parts.append("1 train « \(rollingStockInfo.name) »")
+            
+            // Calculer le nombre de voitures basé sur la capacité (estimation: ~55 places par voiture)
+            let estimatedCars = max(1, rollingStockInfo.capacity / 55)
+            parts.append("\(rollingStockInfo.capacity) places")
+        } else if let rolling = details.rollingStock {
             parts.append("1 train « \(rolling) »")
-        }
-        // Use number of cars if available in rollingStockInfo or fallback to stops.count
-        if let cars = details.rollingStockInfo?.carsCount {
-            parts.append("\(cars) voitures")
-        } else {
             parts.append("\(max(1, details.stops.count)) voitures")
+            parts.append("220 places")
         }
-        parts.append("220 places")
+        
         return parts.joined(separator: " - ")
     }
 }
